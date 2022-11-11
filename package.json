@@ -1,0 +1,9 @@
+{
+  "name": "mini-vue",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "devDependencies": {
+    "@vue/reactivity": "^3.2.45"
+  }
+}
