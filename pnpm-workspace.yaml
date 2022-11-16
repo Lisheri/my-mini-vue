@@ -1,0 +1,3 @@
+# monorepo配置, packages下所有包为独立repo
+packages:
+  - 'packages/*'
