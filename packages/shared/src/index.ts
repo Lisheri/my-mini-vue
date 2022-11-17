@@ -59,3 +59,5 @@ export const isIntegerKey = (key: unknown) =>
 // 判断两个值是否相等, 过滤NaN
 export const hasChanged = (value: any, oldValue: any): boolean =>
   value !== oldValue && (value === value || oldValue === oldValue);
+
+export const extend = Object.assign

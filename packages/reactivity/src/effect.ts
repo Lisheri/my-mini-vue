@@ -73,12 +73,13 @@ export function effect<T = any>(
   return effect;
 }
 
-// 清除当前effect中deps内所有依赖, 重新收集
+// 清除当前effect中deps内所有依赖(同时也清除了对应属性所收集的当前effect依赖, 二者的dep指向同一地址)
 function cleanup(effect: ReactiveEffect) {
   const { deps } = effect;
   if (deps.length) {
     let depLen = deps.length;
     for (let i = 0; i < depLen; i++) {
+      // 这个地方是个浅拷贝, 这里删除后, 对应在
       deps[i].delete(effect);
     }
     deps.length = 0;
@@ -92,11 +93,18 @@ function createReactiveEffect<T = any>(
   options: ReactiveEffectOptions
 ): ReactiveEffect<T> {
   const effect = function reactiveEffect(): unknown {
+    if (!effect.active) {
+      // 非激活状态, 则判断是否调度执行, 如果非调度执行, 则直接执行原始函数
+      // 调度执行会在调度时去执行对应的函数
+      return options.scheduler ? undefined : fn();
+    }
     if (!effectStack.includes(effect)) {
       // 栈内包含当前值则不需执行, 会在派发更新时触发
       // 清空 effect 引用的依赖
       cleanup(effect);
       try {
+        // 开启全局 shouldTrack 允许依赖收集
+        enableTracking()
         // 入栈, 用于控制多次effect执行
         effectStack.push(effect);
         // 设置activeEffect, 标识当前激活的effect, 用于收集依赖
@@ -111,6 +119,8 @@ function createReactiveEffect<T = any>(
       } finally {
         // 出栈, 允许再次入栈收集
         effectStack.pop();
+        // 恢复 shouldTrack 开始前的状态
+        resetTracking()
         // 指向栈顶 effect, 也就是前面进来的
         activeEffect = effectStack[effectStack.length - 1];
       }
@@ -137,8 +147,9 @@ function createReactiveEffect<T = any>(
  * @param key 收集目标的key
  */
 export function track(target: object, key: unknown) {
-  if (!activeEffect) {
+  if (!shouldTrack || !activeEffect) {
     // 如果激活的effect函数不存在, 直接返回
+    // shouldTrack为false不允许收集依赖, 防止stop无法停止新的依赖收集
     // ? 因为收集的依赖就是effect函数
     return;
   }
@@ -161,7 +172,8 @@ export function track(target: object, key: unknown) {
   if (!dep.has(activeEffect)) {
     // 将激活的effect函数作为依赖收集起来
     dep.add(activeEffect);
-    // 当前激活的 effect 收集 dep 集合作为依赖, 后续更新过程中需要对应上
+    // 当前激活的 effect 收集 dep 集合作为依赖
+    // ? 后续执行cleanup移除effect.deps中某个dep下的effect时, 会将当前劫持属性dep中对应的effect一起移除(浅拷贝)
     activeEffect.deps.push(dep);
   }
 }
@@ -179,9 +191,7 @@ export function trigger(
   target: object,
   type: TriggerOpTypes,
   key?: unknown,
-  newValue?: unknown,
-  oldValue?: unknown,
-  oldTarget?: Map<unknown, unknown> | Set<unknown>
+  newValue?: unknown
 ) {
   // 取出之前收集的依赖并遍历执行
   // 通过 targetMap获取到 target 对应的依赖(dep)集合
@@ -232,8 +242,39 @@ export function trigger(
     // 暂不处理迭代器的key
   }
   // 遍历effects执行
-  effects.forEach((item) => {
-    console.info(item);
-    run(item);
-  });
+  effects.forEach(run);
+}
+
+export function stop(effect: ReactiveEffect) {
+  if (effect.active) {
+    // 清除effect的双向依赖
+    cleanup(effect);
+    if (effect.options.onStop) {
+      effect.options.onStop();
+    }
+    // 设置为不激活
+    effect.active = false;
+  }
+}
+
+// 是否应该收集依赖
+let shouldTrack = true;
+const trackStack: boolean[] = [];
+
+export function pauseTracking() {
+  trackStack.push(shouldTrack);
+  // 暂时关闭依赖收集功能
+  shouldTrack = false;
+}
+
+export function enableTracking() {
+  trackStack.push(shouldTrack);
+  // 允许依赖收集
+  shouldTrack = true;
+}
+
+export function resetTracking() {
+  const last = trackStack.pop();
+  // 指向上一次的shouldTrack, 和 enableTracking 区分
+  shouldTrack = last === undefined ? true : last;
 }
