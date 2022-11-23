@@ -1,3 +1,4 @@
+export * from './slotFlags';
 const hasOwnProperty = Object.prototype.hasOwnProperty;
 export const hasOwn = (
   val: object,
@@ -42,6 +43,9 @@ export const NOOP = () => {};
  */
 export const NO = () => false;
 
+const onRE = /^on[^a-z]/
+export const isOn = (key: string) => onRE.test(key)
+
 export const def = (obj: object, key: string | symbol, value: any) => {
   Object.defineProperty(obj, key, {
     configurable: true,
@@ -60,4 +64,29 @@ export const isIntegerKey = (key: unknown) =>
 export const hasChanged = (value: any, oldValue: any): boolean =>
   value !== oldValue && (value === value || oldValue === oldValue);
 
-export const extend = Object.assign
+export const extend = Object.assign;
+
+// 缓存字符串数据
+const cacheStringFunction = <T extends (str: string) => string>(fn: T): T => {
+  const cache: Record<string, string> = Object.create(null);
+  return ((str: string) => {
+    const hit = cache[str];
+    return hit || (cache[str] = fn(str));
+  }) as any;
+};
+
+const camelizeRE = /-(\w)/g;
+// 短横线转驼峰
+export const camelize = cacheStringFunction((str: string): string => {
+  return str.replace(camelizeRE, (_, c) => (c ? c.toUpperCase() : ''));
+});
+
+// 执行数组中的所有函数
+export const invokeArrayFns = (fns: Function[], arg?: any) => {
+  for (let i = 0; i < fns.length; i++) {
+    fns[i](arg)
+  }
+}
+
+// 判断是否为onUpdate开头
+export const isModelListener = (key: string): boolean => key.startsWith("onUpdate:")

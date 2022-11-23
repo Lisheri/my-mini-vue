@@ -5,9 +5,11 @@ export {
   isReactive,
   isReadonly,
   shallowReadonly,
-  isProxy
+  isProxy,
+  toRaw
 } from './reactive';
-export { effect, stop } from './effect';
-export { ref, unRef, isRef, proxyRefs } from './ref';
+export { effect, stop, ReactiveEffectOptions, ReactiveEffect, track, pauseTracking, enableTracking, resetTracking } from './effect';
+export { ref, unRef, isRef, proxyRefs, ShallowUnwrapRef } from './ref';
 export type { Ref } from './ref';
-export { computed, ComputedRef } from './computed'
+export { computed, ComputedRef, ComputedGetter, WritableComputedOptions } from './computed'
+export { TrackOpTypes } from './operations';

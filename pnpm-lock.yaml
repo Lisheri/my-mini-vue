@@ -30,6 +30,24 @@ importers:
     dependencies:
       '@mini-vue/shared': link:../shared
 
+  packages/runtime-core:
+    specifiers:
+      '@mini-vue/reactivity': workspace:^1.0.0
+      '@mini-vue/shared': workspace:^1.0.0
+    dependencies:
+      '@mini-vue/reactivity': link:../reactivity
+      '@mini-vue/shared': link:../shared
+
+  packages/runtime-dom:
+    specifiers:
+      '@mini-vue/reactivity': workspace:^1.0.0
+      '@mini-vue/runtime-core': workspace:^1.0.0
+      '@mini-vue/shared': workspace:^1.0.0
+    dependencies:
+      '@mini-vue/reactivity': link:../reactivity
+      '@mini-vue/runtime-core': link:../runtime-core
+      '@mini-vue/shared': link:../shared
+
 packages:
 
   /@cspotcode/source-map-support/0.8.1:
