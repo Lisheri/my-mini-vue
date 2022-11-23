@@ -1,0 +1,17 @@
+{
+  "name": "@mini-vue/vue",
+  "version": "1.0.0",
+  "description": "@mini-vue/vue",
+  "scripts": {
+    "test": "vitest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@mini-vue/reactivity": "workspace:^1.0.0",
+    "@mini-vue/runtime-core": "workspace:^1.0.0",
+    "@mini-vue/runtime-dom": "workspace:^1.0.0",
+    "@mini-vue/shared": "workspace:^1.0.0"
+  }
+}

@@ -1,4 +1,4 @@
-import { EMPTY_OBJ, isArray, isIntegerKey, isMap } from '@mini-vue/shared';
+import { EMPTY_OBJ, isArray } from '@mini-vue/shared';
 import { TrackOpTypes, TriggerOpTypes } from './operations';
 // 依赖集合
 type Dep = Set<ReactiveEffect>;

@@ -217,7 +217,7 @@ const publicPropertiesMap: PublicPropertiesMap = extend(Object.create(null), {
 // 渲染上下文代理劫持属性
 export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
   get({ _: instance }: ComponentRenderContext, key: string) {
-    const { ctx, setupState, data, props, accessCache, type, appContext } =
+    const { ctx, setupState, data, props, accessCache } =
       instance;
     if (key === ReactiveFlags.SKIP) {
       // 访问 __v_skip 属性

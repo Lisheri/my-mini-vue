@@ -9,12 +9,14 @@
 <body>
   <div id="app"></div>
   <script type="module">
+    import { createApp, h } from '../../lib/guide-mini-vue.esm.js';
     const App = {
       setup() {
         const msg = 'fuck you';
         return () => h('div', `hello, ${msg}!`);
       }
     }
+    createApp(App).mount("#app")
   </script>
 </body>
 </html>

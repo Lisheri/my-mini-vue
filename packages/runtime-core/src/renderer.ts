@@ -8,7 +8,7 @@ import { CreateAppFunction, createAppAPI } from './apiCreateApp';
 import { ShapeFlags } from './shapeFlags';
 import { renderComponentRoot } from './componentRenderUtils';
 import { effect } from '@mini-vue/reactivity';
-import { NOOP } from '@mini-vue/shared';
+// import { NOOP } from '@mini-vue/shared';
 export interface RendererNode {
   [key: string]: any;
 }
@@ -247,7 +247,7 @@ function baseCreateRenderer(options: RendererOptions): any {
       // TODO 缺少unmount逻辑, 稍后实现
       n1 = null;
     }
-    const { type, shapeFlag } = n2;
+    const { shapeFlag } = n2;
     if (shapeFlag & ShapeFlags.ELEMENT) {
       // 处理element
       processElement(n1, n2, container, anchor, parentComponent);
@@ -263,8 +263,9 @@ function baseCreateRenderer(options: RendererOptions): any {
    */
   const render: RootRenderFunction = (vnode, container) => {
     // ? 核心是调用patch方法, 主要是为了后续递归处理
-    // vnode不存在, 说明是组件卸载
     if (vnode == null) {
+      // vnode不存在, 说明是组件卸载
+      // TODO 组件卸载
     } else {
       // 挂载或更新流程
       patch(container._vnode || null, vnode, container, null, null);

@@ -4,26 +4,29 @@
   "description": "搞起来",
   "main": "index.js",
   "scripts": {
-    "test": "vitest"
+    "test": "vitest",
+    "build": "rollup -c rollup.config.js --bundleConfigAsCjs"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Lisheri/my-mini-vue.git"
   },
   "keywords": [],
-  "author": "",
+  "author": "Lisher",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/Lisheri/my-mini-vue/issues"
   },
   "homepage": "https://github.com/Lisheri/my-mini-vue#readme",
   "devDependencies": {
+    "@rollup/plugin-typescript": "^9.0.2",
     "@typescript-eslint/eslint-plugin": "^5.43.0",
     "@typescript-eslint/parser": "^5.43.0",
     "eslint": "^8.27.0",
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-prettier": "^4.2.1",
     "prettier": "^2.7.1",
+    "rollup": "^3.4.0",
     "ts-node": "^10.9.1",
     "typescript": "^4.9.3",
     "vitest": "^0.25.2"

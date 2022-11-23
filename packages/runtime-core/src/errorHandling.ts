@@ -1,4 +1,4 @@
-import { LifecycleHooks, ComponentInternalInstance } from "./component";
+import { LifecycleHooks } from "./component";
 // 标识当前执行的用户输入函数
 export const enum ErrorCodes {
   SETUP_FUNCTION,

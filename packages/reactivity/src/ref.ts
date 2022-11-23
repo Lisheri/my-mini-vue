@@ -1,7 +1,7 @@
 import { track, trigger } from './effect';
 import { TriggerOpTypes } from './operations';
 import { reactive, toRaw, isReactive } from './reactive';
-import { isArray, isObject, hasChanged } from '@mini-vue/shared';
+import { isObject, hasChanged } from '@mini-vue/shared';
 import { CollectionTypes } from './collectionHandlers';
 
 declare const RefSymbol: unique symbol;
@@ -129,7 +129,7 @@ class RefImpl<T> {
 
   constructor(private _rawValue: T, public readonly _shallow = false) {
     // 如果是引用类型则需要使用reactive变为响应式对象
-    this._value = convert(_rawValue);
+    this._value = convert(this._rawValue);
   }
 
   get value() {

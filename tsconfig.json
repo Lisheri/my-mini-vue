@@ -19,7 +19,8 @@
     "lib": ["esnext", "DOM"],
     "types": ["vitest/globals"],
     "paths": {
-      "@mini-vue/*": ["packages/*/src"]
+      "@mini-vue/*": ["packages/*/src"],
+      "mini-vue": ["packages/vue/src"]
     }
   },
   "include": ["packages/*/src", "packages/*/__tests__"],
