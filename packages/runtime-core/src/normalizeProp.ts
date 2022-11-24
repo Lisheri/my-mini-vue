@@ -36,6 +36,7 @@ export function parseStringStyle(cssText: string): NormalizedStyle {
   return res;
 }
 
+// 转换为字符串class
 export function normalizeClass(value: unknown): string {
   let res = '';
   if (isString(value)) {

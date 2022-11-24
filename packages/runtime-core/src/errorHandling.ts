@@ -1,4 +1,5 @@
-import { LifecycleHooks } from "./component";
+import { isFunction, isPromise } from '@mini-vue/shared';
+import { LifecycleHooks } from './component';
 // 标识当前执行的用户输入函数
 export const enum ErrorCodes {
   SETUP_FUNCTION,
@@ -35,13 +36,13 @@ export const ErrorTypeStrings: Record<string | number, string> = {
   [LifecycleHooks.DEACTIVATED]: 'deactivated hook',
   [LifecycleHooks.ERROR_CAPTURED]: 'errorCaptured hook',
   [LifecycleHooks.RENDER_TRACKED]: 'renderTracked hook',
-  [LifecycleHooks.RENDER_TRIGGERED]: 'renderTriggered hook',
+  [LifecycleHooks.RENDER_TRIGGERED]: 'renderTriggered hook'
 };
 
 export type ErrorTypes = LifecycleHooks | ErrorCodes;
 
 /**
- * 
+ *
  * @param fn 原始函数
  * @param instance 当前组件实例
  * @param type 执行的函数类型(可能出错的位置)
@@ -54,7 +55,7 @@ export function callWithErrorHandling(
 ) {
   let res;
   try {
-    res = args.length ? fn(...args) : fn()
+    res = args.length ? fn(...args) : fn();
   } catch (err) {
     // 处理错误
     // console.error(`${ErrorTypeStrings[type]}: ${err}`)
@@ -64,5 +65,27 @@ export function callWithErrorHandling(
 }
 // 单独抛错
 export const handleError = (type, err) => {
-  console.error(`${ErrorTypeStrings[type]}: ${err}`)
+  console.error(`${ErrorTypeStrings[type]}: ${err}`);
+};
+
+// 异步事件调用并拦截错误, 防止阻塞
+export function callWithAsyncErrorHandling(
+  fn: Function | Function[],
+  type: ErrorTypes,
+  args: unknown[] = []
+): any[] {
+  if (isFunction(fn)) {
+    const res = callWithErrorHandling(fn, type, args);
+    if (res && isPromise(res)) {
+      res.catch(err => {
+        handleError(type, err);
+      })
+    }
+    return res;
+  }
+  const values: any[] = [];
+  fn.forEach(f => {
+    values.push(callWithErrorHandling(f, type, args))
+  })
+  return values
 }

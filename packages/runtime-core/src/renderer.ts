@@ -1,4 +1,9 @@
-import { VNode, isSameVNodeType } from './vnode';
+import {
+  VNode,
+  isSameVNodeType,
+  normalizeVNode,
+  VNodeArrayChildren
+} from './vnode';
 import {
   ComponentInternalInstance,
   createComponentInstance,
@@ -8,13 +13,13 @@ import { CreateAppFunction, createAppAPI } from './apiCreateApp';
 import { ShapeFlags } from './shapeFlags';
 import { renderComponentRoot } from './componentRenderUtils';
 import { effect } from '@mini-vue/reactivity';
-// import { NOOP } from '@mini-vue/shared';
+import { isReservedProp } from '@mini-vue/shared';
 export interface RendererNode {
   [key: string]: any;
 }
 
 type PatchFn = (
-  n1: VNode | null, // null means this is a mount
+  n1: VNode | null,
   n2: VNode,
   container: RendererElement,
   anchor?: RendererNode | null,
@@ -29,6 +34,14 @@ export type MountComponentFn = (
   anchor: RendererNode | null,
   parentComponent: ComponentInternalInstance | null
 ) => void;
+
+type MountChildrenFn = (
+  children: VNodeArrayChildren,
+  container: RendererElement,
+  anchor: RendererNode | null,
+  parentComponent: ComponentInternalInstance | null,
+  start?: number
+) => void
 
 export type SetupRenderEffectFn = (
   instance: ComponentInternalInstance,
@@ -69,7 +82,6 @@ export interface RendererOptions<
     key: string,
     prevValue: any,
     nextValue: any,
-    isSVG?: boolean,
     prevChildren?: VNode<HostNode, HostElement>[],
     parentComponent?: ComponentInternalInstance | null,
     unmountChildren?: UnmountChildrenFn
@@ -122,15 +134,15 @@ function baseCreateRenderer<
 function baseCreateRenderer(options: RendererOptions): any {
   // 获取dom操作api, 以供后续流程使用
   const {
-    // insert: hostInsert,
+    insert: hostInsert,
     // remove: hostRemove,
-    // patchProp: hostPatchProp,
+    patchProp: hostPatchProp,
     // forcePatchProp: hostForcePatchProp,
-    // createElement: hostCreateElement,
+    createElement: hostCreateElement,
     // createText: hostCreateText,
     // createComment: hostCreateComment,
     // setText: hostSetText,
-    // setElementText: hostSetElementText,
+    setElementText: hostSetElementText
     // parentNode: hostParentNode,
     // nextSibling: hostNextSibling,
     // setScopeId: hostSetScopeId = NOOP,
@@ -184,6 +196,71 @@ function baseCreateRenderer(options: RendererOptions): any {
     setupRenderEffect(instance, initialVNode, container, anchor);
   };
 
+  const unmountChildren = () => {
+    console.info('卸载儿子们');
+  };
+
+  const mountChildren: MountChildrenFn = (
+    children,
+    container,
+    anchor,
+    parentComponent,
+    // ? 考虑到后续diff优化, 这里不一定是从开头开始遍历
+    start = 0 // 开始位置
+  ) => {
+    for (let i = start; i < children.length; i++) {
+      const child = (children[i] = normalizeVNode(children[i]));
+      patch(null, child, container, anchor, parentComponent);
+    }
+  };
+
+  const mountElement = (
+    vnode: VNode,
+    container: RendererElement,
+    anchor: RendererNode | null,
+    parentComponent: ComponentInternalInstance | null
+  ) => {
+    let el: RendererElement;
+    const { props, shapeFlag } = vnode;
+    // 创建节点
+    el = vnode.el = hostCreateElement(vnode.type as string, props && props.is);
+
+    if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+      // 处理文本节点
+      hostSetElementText(el, vnode.children as string);
+    } else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+      // 处理多个儿子, 遍历递归调用patch
+      mountChildren(
+        vnode.children as VNodeArrayChildren,
+        el,
+        null,
+        parentComponent
+      );
+    }
+
+    // 处理props,  class, style, event等
+    if (props) {
+      for (const key in props) {
+        // 过滤key, ref等内建属性和空字符串
+        if (!isReservedProp(key)) {
+          // 对需要处理的props进行处理
+          hostPatchProp(
+            el,
+            key,
+            null,
+            props[key],
+            vnode.children as VNode[],
+            parentComponent,
+            unmountChildren
+          );
+        }
+      }
+    }
+
+    // 挂载dom元素到container上
+    hostInsert(el, container, anchor);
+  };
+
   const processElement = (
     n1: VNode | null,
     n2: VNode,
@@ -194,7 +271,7 @@ function baseCreateRenderer(options: RendererOptions): any {
     if (n1 == null) {
       // 没有旧节点, 则挂载元素
       // TODO 通过mountElement 实现元素挂载
-      // mountElement(n2, container, anchor, parentComponent)
+      mountElement(n2, container, anchor, parentComponent);
     } else {
       // 更新元素
       // TODO 通过patchElement实现元素更新

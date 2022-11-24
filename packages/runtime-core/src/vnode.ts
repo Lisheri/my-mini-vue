@@ -293,6 +293,11 @@ export function mergeProps(...args: (Data & VNodeProps)[]) {
         ret.style = normalizeStyle([ret.style, ret.style]);
       } else if (isOn(key)) {
         // 处理事件, 事件的key以on开头
+        const existing = ret[key];
+        const incoming = toMerge[key];
+        if (existing !== incoming) {
+          ret[key] = existing ? [].concat(existing as any, toMerge as any) : incoming;
+        }
       } else if (key !== '') {
         ret[key] = toMerge[key];
       }

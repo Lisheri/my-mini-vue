@@ -42,7 +42,6 @@ export const createApp = ((...args) => {
     if (!container) return;
     // 挂载前清空容器内容
     container.innerHTML = '';
-    debugger
     const proxy = mount(container);
     return proxy;
   }

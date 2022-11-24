@@ -1,4 +1,5 @@
 export * from './slotFlags';
+import { makeMap } from './makeMap';
 const hasOwnProperty = Object.prototype.hasOwnProperty;
 export const hasOwn = (
   val: object,
@@ -43,8 +44,8 @@ export const NOOP = () => {};
  */
 export const NO = () => false;
 
-const onRE = /^on[^a-z]/
-export const isOn = (key: string) => onRE.test(key)
+const onRE = /^on[^a-z]/;
+export const isOn = (key: string) => onRE.test(key);
 
 export const def = (obj: object, key: string | symbol, value: any) => {
   Object.defineProperty(obj, key, {
@@ -84,9 +85,19 @@ export const camelize = cacheStringFunction((str: string): string => {
 // 执行数组中的所有函数
 export const invokeArrayFns = (fns: Function[], arg?: any) => {
   for (let i = 0; i < fns.length; i++) {
-    fns[i](arg)
+    fns[i](arg);
   }
-}
+};
 
 // 判断是否为onUpdate开头
-export const isModelListener = (key: string): boolean => key.startsWith("onUpdate:")
+export const isModelListener = (key: string): boolean =>
+  key.startsWith('onUpdate:');
+
+// 判断是否为key, ref等内建属性, 同时过滤空字符串
+export const isReservedProp = /*#__PURE__*/ makeMap(
+  // 首位逗号用于处理空字符串
+  ',key,ref,' +
+    'onVnodeBeforeMount,onVnodeMounted,' +
+    'onVnodeBeforeUpdate,onVnodeUpdated,' +
+    'onVnodeBeforeUnmount,onVnodeUnmounted'
+);
