@@ -11,9 +11,31 @@
 <body>
   <div id="app"></div>
   <script type="module">
-    import { createApp, h, getCurrentInstance, ref, renderSlot } from '../../lib/guide-mini-vue.esm.js';
+    import { createApp, h, getCurrentInstance, ref, renderSlot, provide, inject } from '../../lib/guide-mini-vue.esm.js';
     import { Foo } from './Foo.js';
     window.self = null;
+    const Provider = {
+      name: 'Provider',
+      setup() {
+        provide("foo", "fooVal");
+        provide("bar", "barVal");
+        return () => h('div', {}, [
+          h("p", "Provider"),
+          h(Consumer)
+        ]);
+      }
+    };
+    const Consumer = {
+      name: 'Consumer',
+      setup() {
+        provide("bar", "bar2Val")
+        const foo = inject("foo");
+        const bar = inject("bar");
+        return () => {
+          return h("div", `Consumer - ${foo} - ${bar}`);
+        };
+      }
+    };
     const App = {
       setup() {
         window.self = getCurrentInstance().proxy;
@@ -31,8 +53,8 @@
             onDispatch: handleDispatch
           },
           {
-            header: ({name}) => h('div', 'header' + name),
-            footer: h('div', 'footer')
+            header: ({ name }) => h('p', ['header', name, '日你妈']),
+            footer: h('p', 'footer')
           }
         );
         return () => h('div', {
@@ -41,7 +63,8 @@
           }
         }, [
           h('p', `hello, ${msg}!`),
-          foo
+          foo,
+          h(Provider)
         ]);
       }
     };

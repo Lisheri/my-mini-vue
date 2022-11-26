@@ -16,3 +16,4 @@ export { h } from './h';
 export * from './errorHandling';
 export { getCurrentInstance } from './component';
 export { renderSlot } from './helpers/renderSlot';
+export { inject, provide } from './apiInject';

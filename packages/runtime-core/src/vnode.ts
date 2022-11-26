@@ -71,12 +71,20 @@ export const Text = Symbol('Text');
 // 注释节点
 export const Comment = Symbol('Comment');
 
+export const Fragment = (Symbol('Fragment') as any) as {
+  __isFragment: true
+  new (): {
+    $props: VNodeProps
+  }
+}
+
 export type VNodeTypes =
   | string
   | VNode
   | Component
   | typeof Text
-  | typeof Comment;
+  | typeof Comment
+  | typeof Fragment;
 
 export type VNodeNormalizedChildren =
   | string

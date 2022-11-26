@@ -2,7 +2,10 @@ import {
   VNode,
   isSameVNodeType,
   normalizeVNode,
-  VNodeArrayChildren
+  VNodeArrayChildren,
+  Fragment,
+  Comment,
+  Text
 } from './vnode';
 import {
   ComponentInternalInstance,
@@ -41,7 +44,7 @@ type MountChildrenFn = (
   anchor: RendererNode | null,
   parentComponent: ComponentInternalInstance | null,
   start?: number
-) => void
+) => void;
 
 export type SetupRenderEffectFn = (
   instance: ComponentInternalInstance,
@@ -71,6 +74,13 @@ type UnmountChildrenFn = (
   optimized?: boolean,
   start?: number
 ) => void;
+
+type ProcessTextOrCommentFn = (
+  n1: VNode | null,
+  n2: VNode,
+  container: RendererElement,
+  anchor: RendererNode | null
+) => void
 
 // 渲染器配置类型定义
 export interface RendererOptions<
@@ -118,7 +128,7 @@ const effectOptions = {
   allowRecurse: true
 };
 
-// 创建渲染器
+// 创建渲染器(根据不同的options， 去适配不同的平台)
 export function createRenderer<
   HostNode = RendererNode,
   HostElement = RendererElement
@@ -139,9 +149,9 @@ function baseCreateRenderer(options: RendererOptions): any {
     patchProp: hostPatchProp,
     // forcePatchProp: hostForcePatchProp,
     createElement: hostCreateElement,
-    // createText: hostCreateText,
-    // createComment: hostCreateComment,
-    // setText: hostSetText,
+    createText: hostCreateText,
+    createComment: hostCreateComment,
+    setText: hostSetText,
     setElementText: hostSetElementText
     // parentNode: hostParentNode,
     // nextSibling: hostNextSibling,
@@ -309,6 +319,84 @@ function baseCreateRenderer(options: RendererOptions): any {
   };
 
   /**
+   * 处理文本节点
+   * @param n1 旧节点
+   * @param n2 新节点
+   * @param container 容器节点
+   * @param anchor 锚点
+   */
+  const processText: ProcessTextOrCommentFn = (
+    n1: VNode | null,
+    n2: VNode,
+    container: RendererElement,
+    anchor: RendererNode | null = null
+  ) => {
+    if (n1 == null) {
+      // 挂载
+      hostInsert(n2.el = hostCreateText(n2.children as string), container, anchor);
+    } else {
+      // 更新
+      const el = (n2.el = n1.el!);
+      if (n2.children !== n1.children) {
+        // 有发生变化
+        hostSetText(el, n2.children as string);
+      }
+    }
+  };
+
+  /**
+   * 处理注释节点
+   * @param n1 旧节点
+   * @param n2 新节点
+   * @param container 容器节点
+   * @param anchor 锚点
+   */
+  const processCommentNode: ProcessTextOrCommentFn = (n1, n2, container, anchor) => {
+    if (n1 == null) {
+      hostInsert(
+        (n2.el = hostCreateComment(n2.children as string)),
+        container,
+        anchor
+      )
+    } else {
+      // 注释节点更新后还是注释节点
+      n2.el = n1.el
+    }
+  }
+
+  /**
+   * 处理fragment
+   * @param {VNode | null} n1 旧vnode
+   * @param {VNode} n2 新vnode
+   * @param {RendererElement} container 容器
+   * @param {RendererNode | null} anchor 挂载锚点
+   * @param {ComponentInternalInstance} parentComponent 父组件
+   */
+  const processFragment = (
+    n1: VNode | null,
+    n2: VNode,
+    container: RendererElement,
+    anchor: RendererNode | null = null,
+    parentComponent: ComponentInternalInstance | null = null
+  ) => {
+    const fragmentStartAnchor = (n2.el = n1 ? n1.el : hostCreateText(''))!;
+    const fragmentEndAnchor = (n2.anchor = n1 ? n1.anchor : hostCreateText(''))!;
+    if (n1 == null) {
+      // 挂载
+      // ? 首次挂载时, 需要先插入一个 Fragment, 也就是一个Text节点(其实就是占位)
+      hostInsert(fragmentStartAnchor, container, anchor)
+      hostInsert(fragmentEndAnchor, container, anchor)
+      // 挂载子节点, 只能是数组
+      mountChildren(
+        n2.children as VNodeArrayChildren,
+        container,
+        fragmentEndAnchor,
+        parentComponent
+      )
+    }
+  }
+
+  /**
    *
    * @param n1 旧的vnode
    * @param n2 新的vnode
@@ -329,13 +417,27 @@ function baseCreateRenderer(options: RendererOptions): any {
       // TODO 缺少unmount逻辑, 稍后实现
       n1 = null;
     }
-    const { shapeFlag } = n2;
-    if (shapeFlag & ShapeFlags.ELEMENT) {
-      // 处理element
-      processElement(n1, n2, container, anchor, parentComponent);
-    } else if (shapeFlag & ShapeFlags.COMPONENT) {
-      // 处理组件
-      processComponent(n1, n2, container, anchor, parentComponent);
+    const { type, shapeFlag } = n2;
+    // 处理Fragment和Text
+    switch (type) {
+      case Text:
+        // 处理文本节点
+        processText(n1, n2, container, anchor);
+        break;
+      case Comment:
+        processCommentNode(n1, n2, container, anchor);
+        break;
+      case Fragment:
+        processFragment(n1, n2, container, anchor, parentComponent);
+        break;
+      default:
+        if (shapeFlag & ShapeFlags.ELEMENT) {
+          // 处理element
+          processElement(n1, n2, container, anchor, parentComponent);
+        } else if (shapeFlag & ShapeFlags.COMPONENT) {
+          // 处理组件
+          processComponent(n1, n2, container, anchor, parentComponent);
+        }
     }
   };
   /**

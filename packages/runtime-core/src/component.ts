@@ -234,6 +234,7 @@ export function createComponentInstance(
     next: null,
     vnode,
     subTree: null!,
+    // 初始化的时候需要获取父级的provides, 否则继承根节点的provides
     provides: parent ? parent.provides : Object.create(appContext.provides),
     effects: null,
     // 作为effect的依赖出现,可以被收集, 首次挂载和更新时都会触发

@@ -1,6 +1,6 @@
 import { Slots } from '../componentSlots';
 import { Data } from '../component';
-import { createVNode } from '../vnode';
+import { createVNode, Fragment } from '../vnode';
 
 /**
  * 
@@ -13,6 +13,6 @@ export function renderSlot(slots: Slots, name: string, props: Data = {}) {
   if (slot) {
     const slotContent = slot(props);
     // TODO 插槽根节应该是一个 fragment
-    return createVNode('div', {}, slotContent);
+    return createVNode(Fragment, {}, slotContent);
   }
 }
