@@ -36,7 +36,7 @@ export function renderComponentRoot(
     vnode,
     type: Component,
     proxy,
-    withProxy,
+    // withProxy,
     props,
     propsOptions: [propsOptions],
     slots,
@@ -56,7 +56,8 @@ export function renderComponentRoot(
     let fallthroughAttrs;
     if (vnode.shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
       //  有状态组件
-      const proxyToUse = withProxy || proxy;
+      // TODO 还需考虑template编译后使用with注入上下文的proxy对象, 也就是withProxy
+      const proxyToUse = proxy;
       // 标准化VNode
       result = normalizeVNode(
         render!.call(

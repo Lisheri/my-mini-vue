@@ -1,22 +1,52 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Document</title>
 </head>
+
 <body>
   <div id="app"></div>
   <script type="module">
-    import { createApp, h } from '../../lib/guide-mini-vue.esm.js';
+    import { createApp, h, getCurrentInstance, ref, renderSlot } from '../../lib/guide-mini-vue.esm.js';
+    import { Foo } from './Foo.js';
+    window.self = null;
     const App = {
       setup() {
-        const msg = 'fuck you';
-        return () => h('div', `hello, ${msg}!`);
+        window.self = getCurrentInstance().proxy;
+        const num = ref(0);
+        const msg = 'fuck you 草拟吗';
+        const handleDispatch = () => {
+          console.info('老子收到了');
+          num.value++;
+        };
+
+        const foo = h(
+          Foo,
+          {
+            num: num.value,
+            onDispatch: handleDispatch
+          },
+          {
+            header: ({name}) => h('div', 'header' + name),
+            footer: h('div', 'footer')
+          }
+        );
+        return () => h('div', {
+          onClick: () => {
+            console.info('老子点了');
+          }
+        }, [
+          h('p', `hello, ${msg}!`),
+          foo
+        ]);
       }
-    }
+    };
     createApp(App).mount("#app")
   </script>
 </body>
+
 </html>

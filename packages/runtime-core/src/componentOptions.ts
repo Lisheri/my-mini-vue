@@ -119,14 +119,10 @@ interface LegacyOptions<
   updated?(): void;
   activated?(): void;
   deactivated?(): void;
-  /** @deprecated use `beforeUnmount` instead */
   beforeDestroy?(): void;
   beforeUnmount?(): void;
-  /** @deprecated use `unmounted` instead */
   destroyed?(): void;
   unmounted?(): void;
-
-  // runtime compile only
   delimiters?: [string, string];
 }
 

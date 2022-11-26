@@ -82,6 +82,23 @@ export const camelize = cacheStringFunction((str: string): string => {
   return str.replace(camelizeRE, (_, c) => (c ? c.toUpperCase() : ''));
 });
 
+// 将首字母转换为大写
+export const capitalize = cacheStringFunction(
+  (str: string) => str.charAt(0).toUpperCase() + str.slice(1)
+)
+
+// 处理事件, 转换为onXxxx形式
+export const toHandlerKey = cacheStringFunction(
+  (str: string) => (str ? `on${capitalize(str)}` : ``)
+)
+
+const hyphenateRE = /\B([A-Z])/g
+
+// 将大写驼峰转换为短横线
+export const hyphenate = cacheStringFunction((str: string) =>
+  str.replace(hyphenateRE, '-$1').toLowerCase()
+)
+
 // 执行数组中的所有函数
 export const invokeArrayFns = (fns: Function[], arg?: any) => {
   for (let i = 0; i < fns.length; i++) {

@@ -1,15 +1,17 @@
 import {
   NormalizedPropsOptions,
   ComponentPropsOptions,
-  normalizePropsOptions
+  normalizePropsOptions,
+  initProps
 } from './componentProps';
 import {
   ObjectEmitsOptions,
   EmitsOptions,
   EmitFn,
-  normalizeEmitsOptions
+  normalizeEmitsOptions,
+  emit
 } from './componentEmits';
-import { Slots, InternalSlots } from './componentSlots';
+import { Slots, InternalSlots, initSlots } from './componentSlots';
 import { AppContext, createAppContext } from './apiCreateApp';
 import {
   ComputedOptions,
@@ -133,7 +135,7 @@ export interface ComponentInternalInstance {
   // 暴露给其他组件访问的属性, 如refs访问子组件时, 只有通过exposed属性暴露的才能被访问到
   exposed: Record<string, any> | null;
   // 带有with区块的渲染上下文代理, 主要作用于template编译后的render函数
-  withProxy: ComponentPublicInstance | null;
+  // withProxy: ComponentPublicInstance | null;
   // 渲染上下文
   ctx: Data;
   // data属性
@@ -148,6 +150,7 @@ export interface ComponentInternalInstance {
   refs: Data;
   // 派发事件方法
   emit: EmitFn;
+  // 标识once已执行过一次
   emitted: Record<string, boolean> | null;
   // setup返回的数据
   setupState: Data;
@@ -240,13 +243,13 @@ export function createComponentInstance(
     accessCache: null,
     renderCache: null!,
     components: null,
-    // 这里需要处理用户传入的props和emits, 标准化为后续处理需要的格式
+    // 设置的props选项
     propsOptions: normalizePropsOptions(type, appContext),
     emitsOptions: normalizeEmitsOptions(type, appContext),
     proxy: null,
     exposed: null,
     // 带有with区块的渲染上下文代理
-    withProxy: null,
+    // withProxy: null,
     ctx: EMPTY_OBJ,
     data: EMPTY_OBJ,
     props: EMPTY_OBJ,
@@ -291,7 +294,7 @@ export function createComponentInstance(
   instance.ctx = { _: instance };
   // 初始化根组件指针root
   instance.root = parent ? parent.root : instance;
-  // TODO 初始化派发事件函数emit
+  instance.emit = emit.bind(null, instance);
   return instance;
 }
 
@@ -315,11 +318,12 @@ export const isStatefulComponent = (instance: ComponentInternalInstance) => {
 
 // 设置组件实例, 处理props, 插槽以及调用setup返回的值等
 export function setupComponent(instance: ComponentInternalInstance) {
-  // const { props, children } = instance.vnode;
+  const { props, children } = instance.vnode;
   // 判断当前组件是否为有状态组件
   const isStateful = isStatefulComponent(instance);
-  // TODO initProps
-  // TODO initSlots
+  initProps(instance, props, isStateful);
+  // 初始化插槽
+  initSlots(instance, children);
 
   // 设置有状态的组件实例并获取setup返回结果
   const setupResult = isStateful ? setupStatefulComponent(instance) : undefined;
@@ -352,7 +356,7 @@ function setupStatefulComponent(instance: ComponentInternalInstance) {
 
   // 1. 创建渲染代理的属性访问缓存(初始值为无原型空数组)
   instance.accessCache = Object.create(null);
-  // 2. 创建公开的渲染上下文代理, 并且是非响应式的, 访问渲染上下文中的数据将触发getter, 设置将触发setter
+  // 2. 创建公开的渲染上下文代理
   instance.proxy = new Proxy(instance.ctx, PublicInstanceProxyHandlers);
   // 3. 执行setup
   const { setup } = Component;

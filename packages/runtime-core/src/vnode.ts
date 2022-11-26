@@ -17,7 +17,8 @@ import {
   isOn,
   isFunction,
   isString,
-  isObject
+  isObject,
+  SlotFlags
 } from '@mini-vue/shared';
 export interface VNode<
   HostNode = RendererNode,
@@ -238,7 +239,7 @@ export function normalizeVNode(child: VNodeChild): VNode {
     // 两者都表示传入的节点有问题
     return createVNode(Comment);
   } else if (isArray(child)) {
-    // TODO 处理Fragment, mini-vue不做此处理
+    // TODO 处理Fragment
     console.warn('暂不支持fragment');
     return createVNode(Comment);
   } else if (typeof child === 'object') {
@@ -266,6 +267,24 @@ export function normalizeChildren(vnode: VNode, children: unknown) {
         normalizeChildren(vnode, slot());
       }
       return;
+    } else {
+      // ? shapeFlag不是element, 但是children是个对象, 那么说明传递的是插槽配置
+      // 处理儿子中的插槽
+      type = ShapeFlags.SLOTS_CHILDREN;
+      const slotFlag = (children as RawSlots)._; // 获取当前children的slotFlag(组件更新阶段已经有了)
+      if (!slotFlag) {
+        // 挂载阶段
+        // 保留当前组件的instance
+        (children as RawSlots)._ctx = currentRenderingInstance;
+      } else if (
+        slotFlag === SlotFlags.FORWARDED &&
+        currentRenderingInstance
+      ) {
+        // 更新阶段判断当前插槽是否需要强制子组件更新
+        // 子组件从父组件接收转发的插槽。它的插槽类型由其父级的插槽类型决定。
+        // TODO 此处需要根据当前实例的patchFlag来决定, 暂不实现patchFlag, 因此暂时均设置为动态插槽, 强制子组件去更新
+        (children as RawSlots)._ = SlotFlags.DYNAMIC;
+      }
     }
   } else if (isFunction(children)) {
     children = { default: children, _ctx: currentRenderingInstance };
@@ -296,7 +315,9 @@ export function mergeProps(...args: (Data & VNodeProps)[]) {
         const existing = ret[key];
         const incoming = toMerge[key];
         if (existing !== incoming) {
-          ret[key] = existing ? [].concat(existing as any, toMerge as any) : incoming;
+          ret[key] = existing
+            ? [].concat(existing as any, toMerge as any)
+            : incoming;
         }
       } else if (key !== '') {
         ret[key] = toMerge[key];

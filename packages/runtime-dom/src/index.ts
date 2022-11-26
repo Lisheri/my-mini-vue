@@ -45,7 +45,6 @@ export const createApp = ((...args) => {
     const proxy = mount(container);
     return proxy;
   }
-  // TODO 这里需要重写mount
   return app
 }) as CreateAppFunction<Element>
 

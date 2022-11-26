@@ -10,9 +10,9 @@ export const enum ShapeFlags {
   TEXT_CHILDREN = 1 << 3,
   // 数组子节点 16
   ARRAY_CHILDREN = 1 << 4,
-  // 插槽子结点 32
+  // 插槽子节点 32
   SLOTS_CHILDREN = 1 << 5,
-  // TELEPORT 64
+  // TELEPORT, 渲染到浏览器上任意位置的内建组件标识 64
   TELEPORT = 1 << 6,
   // SUSPENSE 128
   SUSPENSE = 1 << 7,

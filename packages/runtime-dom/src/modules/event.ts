@@ -1,7 +1,6 @@
 import { callWithAsyncErrorHandling } from '@mini-vue/runtime-core';
-import { isArray } from '@mini-vue/shared';
+import { isArray, hyphenate } from '@mini-vue/shared';
 import { ErrorCodes } from 'packages/runtime-core/src/errorHandling';
-import { e } from 'vitest/dist/index-2f5b6168';
 type EventValue = Function | Function[];
 interface Invoker extends EventListener {
   value: EventValue; // 事件函数
@@ -29,17 +28,19 @@ const getNow = () => cachedNow || (p.then(reset), (cachedNow = _getNow()));
 export const addEventListener = (
   el: Element,
   event: string,
-  handler: EventListener
+  handler: EventListener,
+  options?: EventListenerOptions
 ) => {
-  el.addEventListener(event, handler);
+  el.addEventListener(event, handler, options);
 };
 
 export const removeEventListener = (
   el: Element,
   event: string,
-  handler: EventListener
+  handler: EventListener,
+  options?: EventListenerOptions
 ) => {
-  el.removeEventListener(event, handler);
+  el.removeEventListener(event, handler, options);
 }
 
 export function patchEvent(
@@ -56,16 +57,37 @@ export function patchEvent(
     existingInvoker.value = nextValue;
   } else {
     // 新增
+    // 处理name, 原声事件去除传参中附带的 "on"
+    const [name, options] = parseName(rawName)
     if (nextValue) {
       // 添加
       const invoker = (invokers[rawName] = createInvoker(nextValue));
-      addEventListener(el, rawName, invoker);
+      addEventListener(el, name, invoker, options);
     } else if (existingInvoker) {
       // 移除
-      removeEventListener(el, rawName, existingInvoker);
+      removeEventListener(el, name, existingInvoker, options);
       invokers[rawName] = undefined;
     }
   }
+}
+
+const optionsModifierRE = /(?:Once|Capture|Passive)$/; // 匹配 Once, Capture, Passive修饰符
+// 转换props中的事件参数名(去除on, once等)并处理修饰符(capture、passive和once, 通过addEventListener的options选项进行原生处理)
+const parseName = (name: string): [string, EventListenerOptions | undefined] => {
+  let options: EventListenerOptions | undefined;
+  if (optionsModifierRE.test(name)) {
+    // ? 按照约定, 修饰符一般会被挂在尾部
+    options = {}; // 初始化
+    let m;
+    while((m = name.match(optionsModifierRE))) {
+      // 将事件修饰符从name上移除
+      name = name.slice(0, name.length - m[0].length);
+      // 设置Capture、Passive和Once
+      ;(options as any)[m[0].toLowerCase()] = true;
+    }
+  }
+  // 移除首位的on, 并统一转换为短横线连接
+  return [hyphenate(name.slice(2)), options];
 }
 
 function createInvoker(initialValue: EventValue) {

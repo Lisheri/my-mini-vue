@@ -170,7 +170,12 @@ function baseCreateRenderer(options: RendererOptions): any {
         // TODO 不考虑 hydrateNode
         // 执行 patch 将子树vnode 挂载到 container 下
         patch(null, subTree, container, anchor, instance);
-        // TODO 执行 mounted 钩子
+        // 将当前实例的vnode.el指向创建的subTree的el属性, 便于后续访问(mounted周期以后可以获取到真实DOM节点)
+        // ? patch是一个自顶向下深度递归的过程, 因此最外层patch执行完毕后, 内层所有元素也patch完成了
+        // ? 所以到此处, 便可以将vnode.el指向创建的el, 也就是真实DOM节点, 同时这里也可以看出, mounted的执行, 是先子后爹, 自内向外的
+        // ? 同级子节点的mounted也是按顺序执行
+        initialVNode.el = subTree.el;
+        // TODO 到此, 所有的element处理完成 执行 mounted 钩子
         // TODO 执行 VNode 的 onVnodeMounted 钩子
         // ! 暂不处理keepalive的activated和suspense等预制组件
         // 标记挂载
