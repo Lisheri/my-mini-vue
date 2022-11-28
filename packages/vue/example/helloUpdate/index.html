@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+  <div id="app"></div>
+  <script type="module">
+    import { createApp, h, getCurrentInstance, ref, renderSlot, provide, inject } from '../../lib/guide-mini-vue.esm.js';
+    window.self = null;
+    const App = {
+      setup() {
+        window.self = getCurrentInstance().proxy;
+        const num = ref(0);
+        const msg = 'fuck you 草拟吗';
+        const handleDispatch = () => {
+          console.info('老子收到了');
+          num.value++;
+        };
+
+        return () => h('div', {
+          onClick: () => {
+            handleDispatch()
+          }
+        }, [
+          h('p', `hello, ${msg}!${num.value}`)
+        ]);
+      }
+    };
+    createApp(App).mount("#app")
+  </script>
+</body>
+
+</html>

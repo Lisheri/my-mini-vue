@@ -25,6 +25,7 @@
   },
   "include": ["packages/*/src", "packages/*/__tests__"],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "packages/vue/example/*"
   ]
 }

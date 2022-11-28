@@ -17,7 +17,8 @@ import {
   camelize,
   isObject,
   isReservedProp,
-  hasOwn
+  hasOwn,
+  hyphenate
 } from '@mini-vue/shared';
 import { toRaw, shallowReadonly } from '@mini-vue/reactivity';
 type DefaultFactory<T> = (props: Data) => T | null | undefined;
@@ -340,4 +341,57 @@ function resolvePropValue(
     }
   }
   return value;
+}
+
+/**
+ * 组件props属性更新
+ * @param instance 当前实例
+ * @param rawProps 新的props
+ * @param rawPrevProps 旧的props
+ */
+export function updateProps(
+  instance: ComponentInternalInstance,
+  rawProps: Data | null,
+  rawPrevProps: Data | null
+) {
+  // props内部内容通过指针浅拷贝更新后会响应到instance上
+  const { props, attrs } = instance;
+  // 解响应式
+  const rawCurrentProps = toRaw(props);
+  const [options] = instance.propsOptions;
+  // TODO 接入patchFlags, 以优化FULL_PROPS更新的情况, 后续带入patchFlags再处理
+  // 更新props
+  setFullProps(instance, rawProps, props, attrs);
+  // 处理动态props
+  let kebabKey: string;
+  for (const key in rawCurrentProps) {
+    if (
+      !rawProps ||
+      // 驼峰(优先判断驼峰, 不满足就不用转短横线了)
+      (!hasOwn(rawProps, key) &&
+        // 短横线
+        ((kebabKey = hyphenate(key)) === key || !hasOwn(rawProps, kebabKey)))
+    ) {
+      // 有需要删除或更新的key
+      if (options) {
+        if (
+          rawPrevProps &&
+          (rawPrevProps[key] !== undefined ||
+            rawPrevProps[kebabKey!] !== undefined)
+        ) {
+          // 新的值没有, 旧的值有, 则需要更新一个默认值进来
+          props[key] = resolvePropValue(
+            options,
+            rawProps || EMPTY_OBJ,
+            key,
+            undefined,
+            instance
+          );
+        }
+      } else {
+        // 没有options直接删除
+        delete props[key];
+      }
+    }
+  }
 }

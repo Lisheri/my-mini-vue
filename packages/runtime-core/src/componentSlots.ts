@@ -5,7 +5,7 @@ import {
   VNodeChild
 } from './vnode';
 import { ComponentInternalInstance, currentInstance } from './component';
-import { SlotFlags, isFunction, isArray } from '@mini-vue/shared';
+import { SlotFlags, isFunction, isArray, EMPTY_OBJ, extend } from '@mini-vue/shared';
 import { ShapeFlags } from './shapeFlags';
 import { withCtx } from './componentRenderContext';
 export type Slot = (...args: any[]) => VNode[];
@@ -109,6 +109,52 @@ export function initSlots(
     instance.slots = {};
     if (children) {
       normalizeVNodeSlots(instance, children);
+    }
+  }
+}
+
+export const updateSlots = (
+  instance: ComponentInternalInstance,
+  children: VNodeNormalizedChildren
+) => {
+  const { vnode, slots } = instance;
+  // 是否需要删除
+  let needDeletionCheck = true;
+  // 需要保留的对象
+  let deletionComparisonTarget = EMPTY_OBJ;
+
+  if (vnode.shapeFlag & ShapeFlags.SLOTS_CHILDREN) {
+    // 插槽类型的儿子
+    const type = (children as RawSlots)._;
+    if (type) {
+      if (type & SlotFlags.STABLE) {
+        // 稳定插槽不需要更新(编译出来的)
+        needDeletionCheck = false;
+      } else {
+        // 跳过标准化阶段的动态插槽(v-if等)需要更新
+        extend(slots, children as Slots);
+        needDeletionCheck = true;
+      }
+    } else {
+      needDeletionCheck = !(children as RawSlots).$stable;
+      // 标准化
+      normalizeObjectSlots(children as RawSlots, slots);
+    }
+    deletionComparisonTarget = children as RawSlots
+  } else if (children) {
+    // 说明是传递给组件的非插槽儿子
+    // ? 也可能没有插槽了, 动态更新掉了, 所以默认所有的slots在后续都要清除
+    normalizeVNodeSlots(instance, children);
+    deletionComparisonTarget = { default: 1 };
+  }
+
+  // 删除旧的插槽
+  if (needDeletionCheck) {
+    // 更新instance.slots, 非保留插槽均移除(前面合并过slots)
+    for (const key in slots) {
+      if (!isInternalKey(key) && !(key in deletionComparisonTarget)) {
+        delete slots[key];
+      }
     }
   }
 }

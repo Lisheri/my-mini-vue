@@ -14,5 +14,7 @@ export const nodeOps: Omit<RendererOptions<Node, Element>, 'patchProp'> = {
   createComment: (text) => document.createComment(text),
   setElementText: (el, text) => {
     el.textContent = text;
-  }
+  },
+  parentNode: node => node.parentNode as Element | null,
+  nextSibling: node => node.nextSibling
 } as any;
