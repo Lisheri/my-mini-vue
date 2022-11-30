@@ -14,28 +14,28 @@
     import { createApp, h, getCurrentInstance, ref, renderSlot, provide, inject } from '../../lib/guide-mini-vue.esm.js';
     import { Foo } from './Foo.js';
     window.self = null;
-    const Provider = {
-      name: 'Provider',
-      setup() {
-        provide("foo", "fooVal");
-        provide("bar", "barVal");
-        return () => h('div', {}, [
-          h("p", "Provider"),
-          h(Consumer)
-        ]);
-      }
-    };
-    const Consumer = {
-      name: 'Consumer',
-      setup() {
-        provide("bar", "bar2Val")
-        const foo = inject("foo");
-        const bar = inject("bar");
-        return () => {
-          return h("div", `Consumer - ${foo} - ${bar}`);
-        };
-      }
-    };
+    // const Provider = {
+    //   name: 'Provider',
+    //   setup() {
+    //     provide("foo", "fooVal");
+    //     provide("bar", "barVal");
+    //     return () => h('div', {}, [
+    //       h("p", "Provider"),
+    //       h(Consumer)
+    //     ]);
+    //   }
+    // };
+    // const Consumer = {
+    //   name: 'Consumer',
+    //   setup() {
+    //     provide("bar", "bar2Val")
+    //     const foo = inject("foo");
+    //     const bar = inject("bar");
+    //     return () => {
+    //       return h("div", `Consumer - ${foo} - ${bar}`);
+    //     };
+    //   }
+    // };
     const App = {
       setup() {
         window.self = getCurrentInstance().proxy;
@@ -46,26 +46,28 @@
           num.value++;
         };
 
-        const foo = h(
-          Foo,
-          {
-            num: num.value,
-            onDispatch: handleDispatch
-          },
-          {
-            header: ({ name }) => h('p', ['header', name, '日你妈']),
-            footer: h('p', 'footer')
-          }
-        );
-        return () => h('div', {
-          onClick: () => {
-            console.info('老子点了');
-          }
-        }, [
-          h('p', `hello, ${msg}!`),
-          foo,
-          h(Provider)
-        ]);
+        return () => {
+          const foo = h(
+            Foo,
+            {
+              num: num.value,
+              onDispatch: handleDispatch
+            },
+            {
+              header: ({ name }) => h('p', ['header', name, '日你妈']),
+              footer: h('p', 'footer')
+            }
+          );
+          return h('div', {
+            onClick: () => {
+              console.info('老子点了');
+            }
+          }, [
+            h('p', `hello, ${msg}!`),
+            foo,
+            // h(Provider)
+          ]);
+        };
       }
     };
     createApp(App).mount("#app")

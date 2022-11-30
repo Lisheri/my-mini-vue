@@ -16,5 +16,11 @@ export const nodeOps: Omit<RendererOptions<Node, Element>, 'patchProp'> = {
     el.textContent = text;
   },
   parentNode: node => node.parentNode as Element | null,
+  remove: child => {
+    const parent = child.parentNode
+    if (parent) {
+      parent.removeChild(child)
+    }
+  },
   nextSibling: node => node.nextSibling
 } as any;
