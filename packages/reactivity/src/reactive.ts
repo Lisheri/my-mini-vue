@@ -3,6 +3,7 @@ import { UnwrapRef, Ref } from './ref';
 import {
   mutableHandlers,
   readonlyHandlers,
+  shallowReactiveHandlers,
   shallowReadonlyHandlers
 } from './baseHandlers';
 
@@ -70,6 +71,14 @@ export function shallowReadonly<T extends object>(
   target: T
 ): Readonly<{ [K in keyof T]: UnwrapNestedRefs<T[K]> }> {
   return createReactiveObject(target, true, shallowReadonlyHandlers);
+}
+
+export function shallowReactive<T extends object>(target: T): T {
+  return createReactiveObject(
+    target,
+    false,
+    shallowReactiveHandlers
+  )
 }
 
 function createReactiveObject(

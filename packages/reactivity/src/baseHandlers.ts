@@ -3,6 +3,7 @@ import {
   Target,
   ReactiveFlags,
   toRaw,
+  readonlyMap,
   reactiveMap,
   readonly
 } from './reactive';
@@ -34,7 +35,7 @@ function createGetter(isReadonly = false, shallow = false) {
       return isReadonly;
     } else if (
       key === ReactiveFlags.RAW &&
-      receiver === reactiveMap.get(target)
+      receiver === (isReadonly ? readonlyMap : reactiveMap).get(target)
     ) {
       // 访问 __v_raw, 指向原有对象
       return target;
@@ -68,6 +69,7 @@ function createGetter(isReadonly = false, shallow = false) {
   };
 }
 const get = createGetter();
+const shallowGet = /*#__PURE__*/ createGetter(false, true)
 const readonlyGet = createGetter(true);
 const shallowReadonlyGet = createGetter(true, true);
 
@@ -83,6 +85,18 @@ function createSetter(shallow = false) {
   ): boolean {
     // 更新前的值
     const oldValue = (target as any)[key];
+    if (!shallow) {
+      // 获取原始值value, 防止value是一个响应式对象
+      value = toRaw(value)
+      // 处理数组
+      if (!isArray(target) && isRef(oldValue) && !isRef(value)) {
+        // 如果目标对象是一个数组, 并且初始值是一个Ref响应式对象, 同时当前value不是一个ref响应式对象
+        // 此时对oldValue.value赋值, 也就是对原始值赋值, 然后返回即可
+        // ? 此时数据更新已完成, Ref值, 也就是oldValue.value变化后中会继续进行派发更新, 因此此时无需继续操作
+        oldValue.value = value
+        return true
+      }
+    }
     // 判断当前key是否在原始对象上
     const hadKey =
       isArray(target) && isIntegerKey(key)
@@ -107,6 +121,7 @@ function createSetter(shallow = false) {
 }
 
 const set = createSetter();
+const shallowSet = /*#__PURE__*/ createSetter(true)
 
 export const mutableHandlers: ProxyHandler<object> = {
   get,
@@ -128,3 +143,12 @@ export const shallowReadonlyHandlers: ProxyHandler<object> = extend(
     get: shallowReadonlyGet
   }
 );
+
+export const shallowReactiveHandlers: ProxyHandler<object> = extend(
+  {},
+  mutableHandlers,
+  {
+    get: shallowGet,
+    set: shallowSet
+  }
+)

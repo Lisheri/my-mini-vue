@@ -5,6 +5,7 @@ export {
   isReactive,
   isReadonly,
   shallowReadonly,
+  shallowReactive,
   isProxy,
   toRaw
 } from './reactive';

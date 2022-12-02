@@ -145,7 +145,7 @@ export function shouldUpdateComponent(
       return true;
     }
   }
-  if (prevChildren === nextChildren) {
+  if (prevProps === nextProps) {
     // 两个组件的children没有发生变化, 不需要更新
     return false;
   }

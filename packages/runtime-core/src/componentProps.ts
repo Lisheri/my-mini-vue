@@ -20,7 +20,7 @@ import {
   hasOwn,
   hyphenate
 } from '@mini-vue/shared';
-import { toRaw, shallowReadonly } from '@mini-vue/reactivity';
+import { toRaw, shallowReactive } from '@mini-vue/reactivity';
 type DefaultFactory<T> = (props: Data) => T | null | undefined;
 
 // 标识boolean类型的prop, 后续需要添加特别的默认值
@@ -232,7 +232,7 @@ export function initProps(
   if (isStateful) {
     // props是一个不可被修改的属性, 但是props.xx触发时, 需要收集依赖, 这里使用 shallowReadonly
     // TODO 在Vue3中, 这里使用的是 shallowReactive, 修改props中内容时, 是在set中做的拦截, 并仅限于开发环境
-    instance.props = shallowReadonly(props);
+    instance.props = shallowReactive(props);
   } else {
     if (!instance.type.props) {
       // 函数组件如果都是attrs, 那么attrs作为props
