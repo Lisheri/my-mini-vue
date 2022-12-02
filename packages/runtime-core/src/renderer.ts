@@ -20,7 +20,7 @@ import {
   shouldUpdateComponent
 } from './componentRenderUtils';
 import { effect, stop } from '@mini-vue/reactivity';
-import { isReservedProp, EMPTY_OBJ } from '@mini-vue/shared';
+import { isReservedProp, EMPTY_OBJ, EMPTY_ARR } from '@mini-vue/shared';
 import { updateProps } from './componentProps';
 import { updateSlots } from './componentSlots';
 export interface RendererNode {
@@ -43,6 +43,15 @@ type UnmountFn = (
 ) => void;
 
 type RemoveFn = (vnode: VNode) => void;
+
+// 移动子节点
+type MoveFn = (
+  vnode: VNode,
+  container: RendererElement,
+  anchor: RendererNode | null
+  // TODO 暂不需要moveType, 用于处理transition
+  // type: MoveType
+) => void
 
 export type MountComponentFn = (
   initialVNode: VNode,
@@ -151,6 +160,13 @@ const effectOptions = {
   allowRecurse: true
 };
 
+
+export const enum MoveType {
+  ENTER,
+  LEAVE,
+  REORDER
+}
+
 // 创建渲染器(根据不同的options， 去适配不同的平台)
 export function createRenderer<
   HostNode = RendererNode,
@@ -178,7 +194,6 @@ function baseCreateRenderer(options: RendererOptions): any {
     setElementText: hostSetElementText,
     parentNode: hostParentNode,
     nextSibling: hostNextSibling
-    // setScopeId: hostSetScopeId = NOOP,
     // cloneNode: hostCloneNode,
     // insertStaticContent: hostInsertStaticContent
   } = options;
@@ -430,13 +445,158 @@ function baseCreateRenderer(options: RendererOptions): any {
     }
     // 4.删除多余节点
     else if (i > e2) {
-      while(i <= e1) {
+      while (i <= e1) {
         unmount(c1[e1], parentComponent, true);
         i++;
       }
     }
     // 5.处理未知子序列
+    else {
+      // 旧的儿子节点当前处理的开始位置
+      const s1 = i;
+      // 新的儿子节点当前处理的开始位置
+      const s2 = i;
+      // 5.1 存储剩余所有未操作的新的儿子所在序列的索引(key, 此索引从0开始)
+      const keyToNewIndexMap: Map<string | number, number> = new Map();
+      for (i = s2; i <= e2; i++) {
+        const nextChild = (c2[i] = normalizeVNode(c2[i]));
+        if (nextChild.key != null) {
+          if (keyToNewIndexMap.has(nextChild.key)) {
+            // 存在重复未处理的key
+            console.warn(`key: ${nextChild.key}重复, 请确保key的唯一`);
+          }
+          // key进入 keyToNewIndexMap中存储起来, 标识数组中的vnode未处理
+          keyToNewIndexMap.set(nextChild.key, i);
+        }
+      }
+
+      // 5.2 判断是否存在移动节点, 正序遍历旧子序列, 找到匹配的节点更新, 删除不在新子序列中的节点
+      let j;
+      let patched = 0; // 新子序列中已更新的vnode数量
+      const toBePatched = e2 - s2 + 1; // 新子序列中已处理过的节点数量(结尾 - 当前位置 + 1即可)
+      let moved; // 是否需要存在移动节点的标识
+      // 用于跟踪判断节点的位置
+      // ? 其值一直等于当前旧子节点在新子序列中的位置(除非移动, 否则一直递增)
+      let maxNewIndexSoFar = 0;
+      // 用于存储新子节点在旧子序列中的位置索引(从1开始, 0为默认值, 表示没有出现在旧子序列中过)
+      const newIndexToOldIndexMap = new Array(toBePatched);
+      // 初始化 newIndexToOldIndexMap, 从0开始(这个很重要, 因为是数组, 同时也牵扯到后面快速确认当前新子节点记录在这个map的哪个位置)
+      for (i = 0; i < toBePatched; i++) newIndexToOldIndexMap[i] = 0;
+      // 正序遍历旧子序列
+      for (i = s1; i <= e1; i++) {
+        const prevChild = c1[i];
+        if (patched >= toBePatched) {
+          // 处理完成, 还有剩余, 说明都需要移除
+          unmount(prevChild, parentComponent, true);
+          continue;
+        }
+        let newIndex; // 当前旧子节点(prevChild)在新子序列中的位置
+        if (prevChild.key != null) {
+          // 直接从 keyToNewIndexMap 查找旧子节点在新子序列中的索引即可
+          newIndex = keyToNewIndexMap.get(prevChild.key);
+        } else {
+          // 若没有key, 则推断一个当前旧子节点可能存在于新子序列中的索引
+          // 其实就是找一个没有存储在 newIndexToOldIndexMap 中, 并且索引对应的节点和prevChild又是一个sameVNode的新子节点对应的索引
+          for (j = s2; j <= e2; j++) {
+            // j - s2确保 newIndexToOldIndexMap这个数组中的索引从0开始
+            if (
+              newIndexToOldIndexMap[j - s2] === 0 &&
+              isSameVNodeType(prevChild, c2[j] as VNode)
+            ) {
+              // 找到一个即可退出循环
+              newIndex = j;
+              break;
+            }
+          }
+        }
+        if (newIndex === undefined) {
+          // 没有找到newIndex, 说明当前旧子节点已在新子序列中被删除, 移除即可
+          unmount(prevChild, parentComponent, true);
+        } else {
+          // 找到则说明旧子节点需要更新, 执行更新操作
+          // 更新新子节点在旧子序列中的索引
+          // ? newIndex表示当前旧子节点在新子序列中的索引
+          // ? newIndex - s2计算当前新子节点存储在 newIndexToOldIndexMap 这个数组上的准确位置, 因为数组初始化从0开始的, 而newIndex从s2开始
+          // ? i + 1防止0影响 新子节点在newIndexToOldIndexMap 这个判断, 同时 newIndexToOldIndexMap 存储的索引约定从1开始
+          newIndexToOldIndexMap[newIndex - s2] = i + 1;
+          if (newIndex >= maxNewIndexSoFar) {
+            // 一直增加则说明没有移动过, 新旧子序列是统一的
+            // 赋值更新 maxNewIndexSoFar 
+            maxNewIndexSoFar = newIndex;
+          } else {
+            // ? 当前newIndex(前旧子节点在新子序列中的索引)比上一个vnode所在新子序列中的索引更靠前, 说明当前旧子节点移动过
+            // ? 因为遍历是正序遍历的, 若无移动 maxNewIndexSoFar 一定是递增的, 不会存在比newIndex小的情况
+            moved = true;
+          }
+          // 更新
+          patch(
+            prevChild,
+            c2[newIndex] as VNode,
+            container,
+            null,
+            parentComponent
+          );
+          // 更新了一个新节点, 需要将更新节点数 + 1, 以便于判断旧子节点是否需要移除
+          patched++;
+        }
+      }
+
+      // 5.3 挂载和移动新节点
+      // ? 仅当节点移动时生成最长递增子序列
+      const increasingNewIndexSequence = moved ? getSequence(newIndexToOldIndexMap) : EMPTY_ARR;
+      
+      // 最长递增子序列末尾index
+      j = increasingNewIndexSequence.length - 1;
+      // 倒序遍历以便可以使用最后更新的节点作为锚点
+      for (i = toBePatched - 1; i >= 0; i--) {
+        const nextIndex = s2 + i;
+        const nextChild = c2[nextIndex] as VNode;
+        const anchor = nextIndex + 1 < l2 ? (c2[nextIndex + 1] as VNode).el : parentAnchor;
+        if (newIndexToOldIndexMap[i] === 0) {
+          // 挂载新节点
+          patch(null, nextChild, container, anchor, parentComponent);
+        } else if (moved) {
+          // 没有最长递增子序列（reverse 的场景）或者当前的节点索引不在最长递增子序列中，需要移动
+          if (j < 0 || i !== increasingNewIndexSequence[j]) {
+            // 此时知道当前节点的后一位应该谁(锚点), 也知道当前节点应该在的位置(nextIndex)
+            // 所以直接将旧子序列中的节点移动到上面求出来的两个位置即可, 也就是nextIndex处, 锚点之前(无锚点就是最后一位)
+            // TODO 暂不传入moveType, 用于处理transition
+            move(nextChild, container, anchor);
+          } else {
+            j--;
+          }
+        }
+      }
+    }
   };
+
+  const move: MoveFn = (
+    vnode,
+    container,
+    anchor,
+  ) => {
+    const { el, type, shapeFlag, children } = vnode;
+    if (shapeFlag & ShapeFlags.COMPONENT) {
+      // 组件移动
+      move(vnode.component!.subTree, container, anchor);
+      return;
+    }
+    // Fragment整体移动
+    if (type === Fragment) {
+      // 插入当前el
+      hostInsert(el!, container, anchor);
+      for (let i = 0; i < (children as VNode[]).length; i++) {
+        // 一个一个移动
+        const child = (children as VNode[])[i];
+        move(child, container, anchor);
+      }
+      // 插入锚点(其实就是前后的空节点)
+      hostInsert(vnode.anchor!, container, anchor);
+      return;
+    }
+    // 普通节点, 直接插入到对应的位置即可
+    hostInsert(el!, container, anchor);
+  }
 
   /**
    * 处理element更新, 只做两件事:
@@ -664,6 +824,7 @@ function baseCreateRenderer(options: RendererOptions): any {
     anchor: RendererNode | null,
     parentComponent: ComponentInternalInstance | null
   ) => {
+    // TODO 可根据patchFlag对可复用节点进行直接复制
     let el: RendererElement;
     const { props, shapeFlag } = vnode;
     // 创建节点
@@ -919,4 +1080,64 @@ function baseCreateRenderer(options: RendererOptions): any {
     render,
     createApp: createAppAPI(render)
   };
+}
+
+/**
+ * 获取最长递增子序列
+ * @param arr 新子节点在旧子序列中对应的索引
+ * @return 最长递增子序列
+ * 求解方法为 二分查找+回溯
+ * https://zh.wikipedia.org/wiki/%E6%9C%80%E9%95%BF%E9%80%92%E5%A2%9E%E5%AD%90%E5%BA%8F%E5%88%97
+ */
+function getSequence(arr: number[]): number[] {
+  // 用于存储当前索引进入递增子序列result时, 当前索引所在result中的前一位
+  const p = arr.slice();
+  const result = [0];
+  let i, j, u, v, c;
+  const len = arr.length;
+  for (i = 0; i < len; i++) {
+    // 正序遍历
+    const arrI = arr[i];
+    if (arrI !== 0) {
+      j = result[result.length - 1];
+      if (arr[j] < arrI) {
+        // 当前值满足需求, 可进入递增子序列
+        p[i] = j;
+        result.push(i);
+        continue;
+      }
+      // 当前值小于等于子序列末尾, 说明需要插入到前面, 使用二分查找快速确认插入位置
+      u = 0;
+      v = result.length - 1;
+      while(u < v) {
+        c = ((u + v) / 2) | 0;
+        if (arr[result[c]] < arrI) {
+          // 当前值大于中值, 往中值之后继续查找插入点
+          u = c + 1;
+        } else {
+          // 当前值小于或等于中值, 往中值之前继续查找插入点
+          v = c;
+        }
+      }
+      // 最终找到一个插入点(也就是得到的中值: arr[result[u - 1]])
+      if (arrI < arr[result[u]]) {
+        // ? 中值的下一位必须大于当前值, 否则当前值不能插入到u - 1的位置
+        // ? 中值的下一位若小于等于当前值, 则不需要插入了
+        // ? 此时 u 为 c + 1; 也就是中值下一个, 在中值 arr[result[c]] 已经比当前值小的情况下, 他的的下一位(比中值大)若与当前值相等, 则无需更新当前值, 更新也无效
+        // ? 此时若中值下一位比arrI小, 则不应该替换中值, 否则无法确认递增
+        if (u > 0) {
+          p[i] = result[u - 1];
+        }
+        result[u] = i;
+      }
+    }
+  }
+  u = result.length;
+  v = result[u - 1];
+  // 回溯
+  while(u-- > 0) {
+    result[u] = v;
+    v= p[v];
+  }
+  return result;
 }

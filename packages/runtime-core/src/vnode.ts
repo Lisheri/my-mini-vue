@@ -247,9 +247,8 @@ export function normalizeVNode(child: VNodeChild): VNode {
     // 两者都表示传入的节点有问题
     return createVNode(Comment);
   } else if (isArray(child)) {
-    // TODO 处理Fragment
-    console.warn('暂不支持fragment');
-    return createVNode(Comment);
+    // 创建Fragment
+    return createVNode(Fragment, null, child);
   } else if (typeof child === 'object') {
     // 处理编译产生的vnode, 通过判断 el 是否存在来判断编译产生的 vnode 是不是一个标准的 vnode, 如果不是则调用cloneVNode转换为标准vnode
     // ? 编译可能会产生vnode子数组
