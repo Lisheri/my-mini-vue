@@ -23,6 +23,13 @@ import { effect, stop } from '@mini-vue/reactivity';
 import { isReservedProp, EMPTY_OBJ, EMPTY_ARR } from '@mini-vue/shared';
 import { updateProps } from './componentProps';
 import { updateSlots } from './componentSlots';
+import {
+  queueJob,
+  flushPostFlushCbs,
+  invalidateJob,
+  flushPreFlushCbs,
+  queuePostFlushCb
+} from './scheduler'
 export interface RendererNode {
   [key: string]: any;
 }
@@ -154,8 +161,7 @@ export interface RendererOptions<
 }
 
 const effectOptions = {
-  // TODO queueJob 为调度更新的关键
-  // scheduler: queueJob,
+  scheduler: queueJob,
   // 组件渲染的effect需支持递归更新
   allowRecurse: true
 };
@@ -166,6 +172,8 @@ export const enum MoveType {
   LEAVE,
   REORDER
 }
+
+export const queuePostRenderEffect = queuePostFlushCb;
 
 // 创建渲染器(根据不同的options， 去适配不同的平台)
 export function createRenderer<
@@ -219,7 +227,8 @@ function baseCreateRenderer(options: RendererOptions): any {
     updateProps(instance, nextVNode.props, prevProps);
     // * 更新插槽属性
     updateSlots(instance, nextVNode.children);
-    // TODO 这里要处理带有flush: true的watch, 需要再render触发前触发其绑定的watcher
+    // * 这里要处理带有flush: true的watch, 需要再render触发前触发其绑定的watcher
+    flushPreFlushCbs(undefined, instance.update);
   };
 
   const setupRenderEffect: SetupRenderEffectFn = (
@@ -689,7 +698,8 @@ function baseCreateRenderer(options: RendererOptions): any {
       // * 此处为常规组件更新
       // 新的组件vnode直接赋值给next
       instance.next = n2;
-      // TODO 处理更新队列问题, 子组件可能因数据变化被加入到更新队列中, 这里需要移除, 防止重复更新
+      // * 处理更新队列问题, 子组件可能因数据变化被加入到更新队列中, 这里需要移除, 防止重复更新
+      invalidateJob(instance.update)
       // ? 经过派发更新触发时, 还没有next, 上面更新完成next后重新执行, 在进入更新逻辑
       // 再次执行组件更新函数
       instance.update();
@@ -1072,6 +1082,8 @@ function baseCreateRenderer(options: RendererOptions): any {
       // 挂载或更新流程
       patch(container._vnode || null, vnode, container, null, null);
     }
+    // 微队列执行后置任务
+    flushPostFlushCbs();
     // 缓存vnode节点(占位节点), 表示已经渲染
     container._vnode = vnode;
   };

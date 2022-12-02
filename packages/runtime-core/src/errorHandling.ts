@@ -10,7 +10,8 @@ export const enum ErrorCodes {
   NATIVE_EVENT_HANDLER,
   COMPONENT_EVENT_HANDLER,
   VNODE_HOOK,
-  FUNCTION_REF
+  FUNCTION_REF,
+  SCHEDULER
 }
 
 // 错误产生的函数位置
@@ -36,7 +37,8 @@ export const ErrorTypeStrings: Record<string | number, string> = {
   [LifecycleHooks.DEACTIVATED]: 'deactivated hook',
   [LifecycleHooks.ERROR_CAPTURED]: 'errorCaptured hook',
   [LifecycleHooks.RENDER_TRACKED]: 'renderTracked hook',
-  [LifecycleHooks.RENDER_TRIGGERED]: 'renderTriggered hook'
+  [LifecycleHooks.RENDER_TRIGGERED]: 'renderTriggered hook',
+  [ErrorCodes.SCHEDULER]: '处理执行队列报错, 请提issue, 这个应该是内部逻辑错误'
 };
 
 export type ErrorTypes = LifecycleHooks | ErrorCodes;
@@ -77,15 +79,15 @@ export function callWithAsyncErrorHandling(
   if (isFunction(fn)) {
     const res = callWithErrorHandling(fn, type, args);
     if (res && isPromise(res)) {
-      res.catch(err => {
+      res.catch((err) => {
         handleError(type, err);
-      })
+      });
     }
     return res;
   }
   const values: any[] = [];
-  fn.forEach(f => {
-    values.push(callWithErrorHandling(f, type, args))
-  })
-  return values
+  fn.forEach((f) => {
+    values.push(callWithErrorHandling(f, type, args));
+  });
+  return values;
 }

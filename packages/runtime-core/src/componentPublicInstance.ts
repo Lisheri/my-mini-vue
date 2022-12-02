@@ -9,6 +9,7 @@ import {
   ExtractComputedReturns,
   isInBeforeCreate
 } from './componentOptions';
+import { nextTick, queueJob } from './scheduler';
 import { EmitsOptions } from './componentEmits';
 import { UnionToIntersection } from './helpers/typeUtils';
 import {
@@ -208,9 +209,9 @@ const publicPropertiesMap: PublicPropertiesMap = extend(Object.create(null), {
   $parent: (i) => getPublicInstance(i.parent),
   $root: (i) => getPublicInstance(i.root),
   $emit: (i) => i.emit,
-  $options: (i) => i.type
-  // $forceUpdate: i => () => queueJob(i.update),
-  // $nextTick: i => nextTick.bind(i.proxy!),
+  $options: (i) => i.type,
+  $forceUpdate: i => () => queueJob(i.update),
+  $nextTick: i => nextTick.bind(i.proxy!)
   // $watch: i => NOOP
 } as PublicPropertiesMap);
 

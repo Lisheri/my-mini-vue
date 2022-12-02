@@ -18,3 +18,5 @@ export { getCurrentInstance, ComponentInternalInstance } from './component';
 export { renderSlot } from './helpers/renderSlot';
 export { inject, provide } from './apiInject';
 export { VNode } from './vnode';
+export { nextTick, queuePostFlushCb } from './scheduler'
+export { watchEffect, watch } from './apiWatch';
