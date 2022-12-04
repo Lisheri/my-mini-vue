@@ -1,0 +1,11 @@
+{
+  "name": "@mini-vue/compiler-core",
+  "version": "1.0.0",
+  "description": "@mini-vue/compiler-core",
+  "scripts": {
+    "test": "vitest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

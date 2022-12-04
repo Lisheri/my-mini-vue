@@ -231,7 +231,7 @@ export function initProps(
   setFullProps(instance, rawProps, props, attrs);
   if (isStateful) {
     // props是一个不可被修改的属性, 但是props.xx触发时, 需要收集依赖, 这里使用 shallowReadonly
-    // TODO 在Vue3中, 这里使用的是 shallowReactive, 修改props中内容时, 是在set中做的拦截, 并仅限于开发环境
+    // 在Vue3中, 这里使用的是 shallowReactive, 修改props中内容时, 是在set中做的拦截, 并仅限于开发环境
     instance.props = shallowReactive(props);
   } else {
     if (!instance.type.props) {
