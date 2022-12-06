@@ -24,7 +24,8 @@ describe('Parse', () => {
         type: NodeTypes.ELEMENT, // 节点的类型
         tag: 'div',
         tagType: ElementTypes.ELEMENT,
-        children: []
+        children: [],
+        codegenNode: undefined
       });
     });
   });
@@ -34,7 +35,7 @@ describe('Parse', () => {
       const ast = baseParse('some text');
       expect(ast.children[0]).toStrictEqual({
         type: NodeTypes.TEXT, // 节点的类型
-        content: 'some text'
+        content: 'some text',
       });
     });
   });
@@ -51,6 +52,7 @@ describe('Parse', () => {
       type: NodeTypes.ELEMENT,
       tag: 'p',
       tagType: ElementTypes.ELEMENT,
+      codegenNode: undefined,
       children: [
         {
           type: NodeTypes.TEXT,
@@ -80,11 +82,13 @@ describe('Parse', () => {
       type: NodeTypes.ELEMENT,
       tag: 'div',
       tagType: ElementTypes.ELEMENT,
+      codegenNode: undefined,
       children: [
         {
           type: NodeTypes.ELEMENT,
           tag: 'p',
           tagType: ElementTypes.ELEMENT,
+          codegenNode: undefined,
           children: [
             {
               type: NodeTypes.TEXT,

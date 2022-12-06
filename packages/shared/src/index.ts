@@ -126,3 +126,8 @@ export const remove = <T>(arr: T[], el: T) => {
     arr.splice(i, 1)
   }
 }
+
+export const isPlainObject = (val: unknown): val is object =>
+  toTypeString(val) === '[object Object]'
+
+export { toDisplayString } from './toDisplayString';

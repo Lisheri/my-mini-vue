@@ -1,3 +1,4 @@
 node_modules
 dist
 lib
+__snapshots__

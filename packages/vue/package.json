@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@mini-vue/compiler-core": "workspace:^1.0.0",
     "@mini-vue/reactivity": "workspace:^1.0.0",
     "@mini-vue/runtime-core": "workspace:^1.0.0",
     "@mini-vue/runtime-dom": "workspace:^1.0.0",

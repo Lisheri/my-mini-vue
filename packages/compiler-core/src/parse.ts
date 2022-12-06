@@ -4,6 +4,7 @@ import {
   InterpolationNode,
   NodeTypes,
   PlainElementNode,
+  RootNode,
   TextNode
 } from './ats';
 
@@ -16,16 +17,19 @@ enum TagType {
   End
 }
 
-export function baseParse(content: string) {
+export function baseParse(content: string): RootNode {
   // 创建全局上下文对象, 后续都根据此对象来处理
   const context = createParseContext(content);
   // 快速伪实现
   return createRoot(parseChildren(context, []));
 }
 
-function createRoot(children) {
+function createRoot(children): RootNode {
   return {
-    children
+    type: NodeTypes.ROOT,
+    children,
+    codegenNode: undefined,
+    helpers: []
   };
 }
 
@@ -38,10 +42,12 @@ function createRoot(children) {
 function parseChildren(context: ParserContext, ancestors: ElementNode[]) {
   const nodes: any = [];
   while (!isEnd(context, ancestors)) {
+    // ? 其实这里就是一个有限状态机, context就是当前初始状态
     // 应当循环递归处理context, 直到处理完成
     let node;
     const s = context.source;
     if (s.startsWith('{{')) {
+      // ? "{{" 插值为有限状态机的一个状态, 走到 "}}", 也就是end, 标识结束状态, 又回到context初始状态
       // 处理插值的标识
       node = parseInterpolation(context);
     } else if (s[0] === '<') {
@@ -164,7 +170,8 @@ function parseTag(
     type: NodeTypes.ELEMENT, // 节点的类型
     tag,
     children: [], // tag的children默认为空数组
-    tagType
+    tagType,
+    codegenNode: undefined // 在transform parse之前需要创建codegenNode
   };
 }
 
@@ -227,7 +234,7 @@ function startsWithEndTagOpen(source: string, tag: string): boolean {
   return (
     startsWith(source, '</') &&
     // ? 通过substring直接截取tag, 过滤 "</", 全部转换为小写进行对比, 同时还要满足
-    source.substring(2, tag.length).toLowerCase() === tag.toLowerCase() &&
+    source.substring(2, 2 + tag.length).toLowerCase() === tag.toLowerCase() &&
     // ? 还要满足tag的结尾有一个水平制表符, 回车, 换行, 换页符或 ">", 用于校验结束标签也写完了
     /[\t\r\n\f />]/.test(source[2 + tag.length] || '>')
   );

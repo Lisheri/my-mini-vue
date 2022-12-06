@@ -33,7 +33,7 @@ import {
   ReactiveEffect,
   resetTracking
 } from '@mini-vue/reactivity';
-import { EMPTY_OBJ, isPromise, isObject, isFunction } from '@mini-vue/shared';
+import { EMPTY_OBJ, isPromise, isObject, isFunction, NOOP } from '@mini-vue/shared';
 export type Data = Record<string, unknown>;
 
 export interface ComponentInternalOptions {
@@ -205,6 +205,21 @@ type LifecycleHook = Function[] | null;
 export interface ClassComponent {
   new (...args: any[]): ComponentPublicInstance<any, any, any, any, any>;
   __vccOpts: ComponentOptions;
+}
+
+type CompileFunction = (
+  template: string | object
+  // options?: CompilerOptions
+) => InternalRenderFunction
+
+let compiler: CompileFunction | undefined
+
+// 标识是否为runtimeOnly
+export const isRuntimeOnly = () => !compiler;
+
+// 注册编译方法
+export function registerRuntimeCompiler(_compiler: any) {
+  compiler = _compiler;
 }
 
 // 默认的appContext
@@ -430,6 +445,14 @@ export function finishComponentSetup(instance: ComponentInternalInstance) {
     instance.render = Component.render as InternalRenderFunction;
   } else if (!instance.render) {
     // 运行时编译
+    // ! 这里不应直接引入compile-core的逻辑, 编译逻辑只需要在构建时使用即可, 无需在运行时跑编译, 如果没有经过注册事件注册compile, 那么此处没有compile方法
+    if (compiler && Component.template && !Component.render) {
+      // ? 必须存在compiler编译器和template, 并且用户没有手写的render函数, 否则以手写的render函数为最高优先级
+      if (Component.template) {
+        Component.render = compiler(Component.template);
+      }
+    }
+    instance.render = (Component.render || NOOP) as InternalRenderFunction;
   }
 
   // TODO 兼容Vue2
@@ -439,5 +462,15 @@ export function finishComponentSetup(instance: ComponentInternalInstance) {
   // resetTracking()
   // currentInstance = null
 
-  // TODO 无render抛错
+  // 无render抛错
+  if (!Component.render && instance.render === NOOP) {
+    /* istanbul ignore if */
+    if (!compiler && Component.template) {
+      // 没有compile函数, 但是有template模板, 开发环境抛错
+      console.warn('请在runtime-only的版本需提前编译template');
+    } else {
+      // 无template也没有render, 开发环境抛错
+      console.warn(`组件缺少render或template`);
+    }
+  }
 }
